@@ -350,7 +350,7 @@ def analyze_run(
 @clean_app.command(name="old")
 def clean_old(
     path: str = typer.Argument(".", help="目标目录"),
-    months: int = typer.Option(12, "--months", "-m", help="N 个月前的文件视为旧文件"),
+    months: int = typer.Option(24, "--months", "-m", help="N 个月前的文件视为旧文件"),
     dry_run: bool = typer.Option(False, "--dry-run", help="预览模式，不实际执行"),
 ):
     """查找 N 个月未修改的旧文件"""
@@ -472,7 +472,7 @@ def clean_large(
 @clean_app.command(name="all")
 def clean_all(
     path: str = typer.Argument(".", help="目标目录"),
-    old_months: int = typer.Option(12, "--old-months", help="旧文件判定月数"),
+    old_months: int = typer.Option(24, "--old-months", help="旧文件判定月数"),
     large_threshold: str = typer.Option("100MB", "--large-threshold", help="大文件阈值"),
     dry_run: bool = typer.Option(False, "--dry-run", help="预览模式，不实际执行"),
 ):

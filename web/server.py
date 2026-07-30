@@ -277,7 +277,7 @@ async def dup_clean(
 @app.post("/api/clean/scan")
 async def clean_scan(
     path: str = Query(...),
-    old_months: int = Query(12),
+    old_months: int = Query(24),
     large_threshold: str = Query("100MB"),
 ):
     """综合杂乱扫描"""

@@ -114,7 +114,7 @@ class ClutterFinder:
     def full_scan(
         self,
         path: Path,
-        old_months: int = 12,
+        old_months: int = 24,
         large_threshold: int = 100 * 1024 * 1024,
     ) -> ClutterReport:
         """综合扫描全部杂乱"""
