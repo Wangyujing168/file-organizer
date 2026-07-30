@@ -346,7 +346,7 @@ async function runCleanScan() {
     html += '<details style="margin-top:8px"><summary style="cursor:pointer;color:#e94560">📁 空目录 (' + data.empty_dirs_list.length + ' 个)</summary>';
     html += '<div style="max-height:300px;overflow-y:auto;margin-top:4px">';
     data.empty_dirs_list.forEach(d => {
-      html += `<div style="color:#888;font-size:12px;padding:2px 0">📁 ${esc(d)}</div>`;
+      html += `<div style="color:#888;font-size:12px;padding:2px 0;cursor:pointer" onclick="openFolder('${d.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')" title="点击打开文件夹">📁 ${esc(d)}</div>`;
     });
     html += '</div></details>';
   }
@@ -355,7 +355,7 @@ async function runCleanScan() {
     html += '<details style="margin-top:8px"><summary style="cursor:pointer;color:#e94560">📦 旧文件 (' + data.old_files_list.length + ' 个)</summary>';
     html += '<div style="max-height:300px;overflow-y:auto;margin-top:4px">';
     data.old_files_list.forEach(f => {
-      html += `<div style="font-size:12px;padding:2px 0"><span style="color:#888">${f.mtime}</span> ${formatSize(f.size)} ${esc(f.path)}</div>`;
+      html += `<div style="font-size:12px;padding:2px 0"><span style="color:#888">${f.mtime}</span> ${formatSize(f.size)} ` + pathHtml(f.path).replace('📂 ', '') + `</div>`;
     });
     html += '</div></details>';
   }
@@ -364,7 +364,7 @@ async function runCleanScan() {
     html += '<details style="margin-top:8px"><summary style="cursor:pointer;color:#e94560">💾 大文件 (' + data.large_files_list.length + ' 个)</summary>';
     html += '<div style="max-height:300px;overflow-y:auto;margin-top:4px">';
     data.large_files_list.forEach(f => {
-      html += `<div style="font-size:12px;padding:2px 0"><span style="color:#888">${f.mtime}</span> ${formatSize(f.size)} ${esc(f.path)}</div>`;
+      html += `<div style="font-size:12px;padding:2px 0"><span style="color:#888">${f.mtime}</span> ${formatSize(f.size)} ` + pathHtml(f.path).replace('📂 ', '') + `</div>`;
     });
     html += '</div></details>';
   }

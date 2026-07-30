@@ -355,7 +355,10 @@ async def open_folder(path: str = Query(...)):
         return JSONResponse({"error": f"文件不存在: {path}"}, status_code=404)
     try:
         if sys.platform == "win32":
-            subprocess.Popen(["explorer", "/select,", str(p.resolve())])
+            if p.is_dir():
+                subprocess.Popen(["explorer", str(p.resolve())])
+            else:
+                subprocess.Popen(["explorer", "/select,", str(p.resolve())])
         elif sys.platform == "darwin":
             subprocess.Popen(["open", "-R", str(p.resolve())])
         else:
