@@ -346,6 +346,25 @@ async def suggest(path: str = Query(...)):
 # ============================================================
 # 健康检查
 # ============================================================
+@app.post("/api/open-folder")
+async def open_folder(path: str = Query(...)):
+    """在资源管理器中打开文件所在文件夹"""
+    import subprocess
+    p = Path(path).expanduser()
+    if not p.exists():
+        return JSONResponse({"error": f"文件不存在: {path}"}, status_code=404)
+    try:
+        if sys.platform == "win32":
+            subprocess.Popen(["explorer", "/select,", str(p.resolve())])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", "-R", str(p.resolve())])
+        else:
+            subprocess.Popen(["xdg-open", str(p.parent.resolve())])
+        return {"status": "ok"}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "version": "2.0.0"}

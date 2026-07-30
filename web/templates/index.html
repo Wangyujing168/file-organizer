@@ -50,7 +50,8 @@ a { color: #7ec8e3; text-decoration: none; }
 .tag-keep { background: #1a4d2e; color: #4ecca3; }
 .tag-delete { background: #4d1a2e; color: #e94560; }
 .tag-info { background: #1a2e4d; color: #7ec8e3; }
-.item-path { color: #888; font-size: 12px; word-break: break-all; }
+.item-path { color: #888; font-size: 12px; word-break: break-all; cursor: pointer; }
+.item-path:hover { color: #7ec8e3; text-decoration: underline; }
 
 .empty-state { text-align: center; padding: 60px 20px; color: #555; }
 .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
@@ -159,6 +160,13 @@ function renderFileList(children) {
 }
 
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+async function openFolder(filePath) {
+  await fetch(`/api/open-folder?path=${encodeURIComponent(filePath)}`, {method:'POST'});
+}
+function pathHtml(filePath) {
+  const escaped = filePath.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  return `<span class="item-path" onclick="openFolder('${escaped}')" title="点击在资源管理器中打开">📂 ${esc(filePath)}</span>`;
+}
 
 function showLoading(id) { document.getElementById(id).innerHTML = '<div class="loading">加载中...</div>'; }
 
@@ -282,10 +290,10 @@ async function runDupReview() {
       html += `<div style="margin-top:8px;padding:8px;background:#1a1a2e;border-radius:4px">`;
       html += `<strong>组 #${g.index}</strong> ${g.file_size_human} × ${g.total_copies} 份 — 浪费 ${g.waste}<br>`;
       html += `<span class="tag tag-keep">保留</span> <strong>${esc(g.keep_file.name)}</strong> <span style="color:#888;font-size:12px">${g.keep_file.mtime}</span>`;
-      html += `<div class="item-path">${esc(g.keep_file.path)}</div>`;
+      html += pathHtml(g.keep_file.path);
       g.delete_files.forEach(f => {
         html += `<span class="tag tag-delete">删除</span> ${esc(f.name)} <span style="color:#888;font-size:12px">${f.mtime}</span>`;
-        html += `<div class="item-path">${esc(f.path)}</div>`;
+        html += pathHtml(f.path);
       });
       html += `<div style="color:#4ecca3;font-size:12px;margin-top:4px">💡 ${g.recommendation}</div>`;
       html += `</div>`;
