@@ -39,7 +39,7 @@ class TestClutterFinder:
 
     def test_find_temp_files(self, temp_dir):
         (temp_dir / "test.tmp").write_text("tmp")
-        (temp_dir / "backup.bak").write_text("bak")
+        (temp_dir / "drawing.dwl").write_text("dwl")
         (temp_dir / "normal.txt").write_text("normal")
 
         finder = ClutterFinder(recursive=False)
@@ -47,7 +47,7 @@ class TestClutterFinder:
 
         assert len(result) == 2
         assert any(".tmp" in f for f in result)
-        assert any(".bak" in f for f in result)
+        assert any(".dwl" in f for f in result)
 
     def test_find_empty_dirs(self, temp_dir):
         empty = temp_dir / "empty"

@@ -20,9 +20,11 @@ from file_organizer.scanner import FileScanner
 
 # 常见临时文件模式
 TEMP_PATTERNS = [
-    "*.tmp", "*.temp", "*.bak", "*.swp", "*.swo",
+    "*.tmp", "*.temp", "*.swp", "*.swo",
     "~$*", "._*", "*.lock", "*.cache", "Thumbs.db",
     ".DS_Store", "*.part", "*.crdownload",
+    # CAD 相关的临时文件
+    "*.dwl", "*.dwl2", "*.ac$", "*.sv$",
 ]
 
 
