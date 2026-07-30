@@ -440,7 +440,7 @@ def clean_empty(
             console.print("已取消")
             return
 
-    deleted = clean_empty_dirs(empty_dirs, dry_run=False)
+    deleted = clean_empty_dirs(str(path), empty_dirs=empty_dirs, dry_run=False)
     print_success(f"已删除 {deleted} 个空目录")
 
 

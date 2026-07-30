@@ -227,8 +227,11 @@ def clean_temp_files(temp_files: list[str], dry_run: bool = False) -> int:
     return deleted
 
 
-def clean_empty_dirs(empty_dirs: list[str], dry_run: bool = False) -> int:
+def clean_empty_dirs(base_path: str, empty_dirs: list[str] = None, dry_run: bool = False) -> int:
     """删除空目录，返回删除数量"""
+    if empty_dirs is None:
+        empty_dirs = []
+
     deleted = 0
     # 深度优先：先删深层的
     for dir_path in sorted(empty_dirs, key=lambda d: -d.count(os.sep)):
@@ -238,6 +241,6 @@ def clean_empty_dirs(empty_dirs: list[str], dry_run: bool = False) -> int:
             else:
                 os.rmdir(dir_path)
             deleted += 1
-        except (OSError, PermissionError) as e:
-            pass  # 非空目录可能在外层有文件，跳过
+        except (OSError, PermissionError):
+            pass
     return deleted

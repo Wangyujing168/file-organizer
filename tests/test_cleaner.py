@@ -101,6 +101,6 @@ class TestClutterFinder:
         empty = temp_dir / "empty"
         empty.mkdir()
 
-        deleted = clean_empty_dirs([str(empty)], dry_run=False)
+        deleted = clean_empty_dirs(str(temp_dir), empty_dirs=[str(empty)], dry_run=False)
         assert deleted == 1
         assert not empty.exists()

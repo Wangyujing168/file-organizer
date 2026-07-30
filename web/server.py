@@ -317,7 +317,7 @@ async def clean_execute(
         deleted = clean_temp_files(items, dry_run=dry_run)
     elif target == "empty":
         items = finder.find_empty_dirs(p)
-        deleted = clean_empty_dirs(items, dry_run=dry_run)
+        deleted = clean_empty_dirs(str(p), empty_dirs=items, dry_run=dry_run)
     else:
         return {"deleted": 0, "message": "不支持的操作"}
 
