@@ -67,7 +67,7 @@ app.add_typer(undo_app, name="undo")
 # ============================================================
 @app.command(name="web")
 def web_start(
-    host: str = typer.Option("127.0.0.1", "--host", "-h", help="监听地址"),
+    host: str = typer.Option("0.0.0.0", "--host", "-h", help="监听地址（0.0.0.0=局域网可访问）"),
     port: int = typer.Option(8888, "--port", "-p", help="监听端口"),
     no_browser: bool = typer.Option(False, "--no-browser", help="不自动打开浏览器"),
 ):

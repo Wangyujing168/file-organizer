@@ -392,7 +392,7 @@ def _parse_size(size_str: str) -> int:
         return 0
 
 
-def main(host: str = "127.0.0.1", port: int = 8888, open_browser: bool = True):
+def main(host: str = "0.0.0.0", port: int = 8888, open_browser: bool = True):
     """启动 Web 服务"""
     import threading
     import webbrowser
