@@ -533,4 +533,7 @@ def _parse_size(size_str: str) -> int:
 
 
 if __name__ == "__main__":
+    # 双击启动时默认进入 Web 模式
+    if len(sys.argv) <= 1:
+        sys.argv.append("web")
     app()
