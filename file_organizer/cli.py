@@ -73,7 +73,8 @@ def web_start(
 ):
     """启动 Web 界面（浏览器中操作）"""
     from web.server import main
-    console.print(f"🚀 启动 Web 服务: [cyan]http://{host}:{port}[/cyan]")
+    url = f"http://127.0.0.1:{port}" if host == "0.0.0.0" else f"http://{host}:{port}"
+    console.print(f"🚀 启动 Web 服务，浏览器打开: [cyan]{url}[/cyan]")
     main(host=host, port=port, open_browser=not no_browser)
 
 
