@@ -1,5 +1,6 @@
 """FastAPI Web 服务——文件整理工具的 Web 界面"""
 
+import io
 import json
 import os
 import traceback
@@ -7,12 +8,24 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+# 修复 Windows 控制台 GBK 编码问题
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 # 将项目根目录加入路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# 重定向 Rich 输出，避免 Web 环境下写控制台出错
+from rich.console import Console as RichConsole
+_web_console = RichConsole(file=io.StringIO(), force_terminal=False)
+
+# 全局替换 reporter 的 console，所有模块的 Rich 输出都定向到内存
+import file_organizer.reporter as rpt
+rpt.console = _web_console
 
 from file_organizer.analyzer import Analyzer
 from file_organizer.cleaner import ClutterFinder, clean_empty_dirs, clean_temp_files
@@ -35,9 +48,13 @@ TEMPLATE_DIR = Path(__file__).parent / "templates"
 @app.get("/", response_class=HTMLResponse)
 async def index():
     """主页"""
+    from fastapi.responses import Response
     html_path = TEMPLATE_DIR / "index.html"
     if html_path.exists():
-        return html_path.read_text(encoding="utf-8")
+        content = html_path.read_text(encoding="utf-8")
+        return Response(content=content, media_type="text/html",
+                       headers={"Cache-Control": "no-cache, no-store, must-revalidate",
+                                "Pragma": "no-cache", "Expires": "0"})
     return "<h1>Web 界面未找到，请先构建</h1>"
 
 
