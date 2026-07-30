@@ -104,9 +104,58 @@ async def browse(path: str = Query(default="/")):
 # 分析 API
 # ============================================================
 @app.post("/api/analyze")
-async def analyze(path: str = Query(...), recursive: bool = Query(True)):
-    """分析目录"""
+async def analyze(path: str = Query(...), recursive: bool = Query(True), quick: bool = Query(True)):
+    """分析目录。quick=True 时仅统计数量和大小（秒级），quick=False 时完整分析"""
     p = Path(path).expanduser()
+    if not p.exists():
+        return JSONResponse({"error": f"路径不存在: {path}"}, status_code=404)
+
+    if quick:
+        # 快速统计：只计数 + 大小，不逐文件分析
+        total_files = 0
+        total_dirs = 0
+        total_size = 0
+        ext_counts = {}
+        try:
+            if recursive:
+                for root, dirs, files in os.walk(p):
+                    dirs[:] = [d for d in dirs if not d.startswith(".")]
+                    total_dirs += len(dirs)
+                    for f in files:
+                        if f.startswith("."): continue
+                        fp = os.path.join(root, f)
+                        try:
+                            size = os.path.getsize(fp)
+                            total_files += 1
+                            total_size += size
+                            ext = os.path.splitext(f)[1].lower() or "(无扩展名)"
+                            ext_counts[ext] = ext_counts.get(ext, 0) + 1
+                        except OSError:
+                            pass
+            else:
+                for item in p.iterdir():
+                    if item.is_file() and not item.name.startswith("."):
+                        total_files += 1
+                        size = item.stat().st_size
+                        total_size += size
+                        ext = item.suffix.lower() or "(无扩展名)"
+                        ext_counts[ext] = ext_counts.get(ext, 0) + 1
+                    elif item.is_dir():
+                        total_dirs += 1
+        except (OSError, PermissionError):
+            pass
+
+        return {
+            "total_files": total_files,
+            "total_dirs": total_dirs,
+            "total_size": total_size,
+            "total_size_human": _format_size(total_size),
+            "file_types": dict(sorted(ext_counts.items(), key=lambda x: x[1], reverse=True)[:10]),
+            "issues": [],
+            "quick": True,
+        }
+
+    # 完整分析
     analyzer = Analyzer(recursive=recursive)
     report = analyzer.analyze(p)
     return report.to_dict()

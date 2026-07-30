@@ -165,39 +165,69 @@ function showLoading(id) { document.getElementById(id).innerHTML = '<div class="
 // ======================== 操作 ========================
 function getPath() { return currentPath; }
 
-async function apiPost(url, body) {
-  showLoading('content');
+async function fetchWithTimeout(url, options, timeout = 60000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
   try {
-    const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
-    return await res.json();
-  } catch (e) { return {error: '请求失败: ' + e.message}; }
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timer);
+    return res;
+  } catch (e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error('请求超时');
+    throw e;
+  }
 }
 
 async function runAnalyze() {
   const p = getPath(); if (!p) return;
-  const data = await (await fetch(`/api/analyze?path=${encodeURIComponent(p)}`, {method:'POST'})).json();
-  renderAnalyze(data);
+  document.getElementById('content').innerHTML = '<div class="loading">分析中...（大文件夹请耐心等待）</div>';
+  try {
+    const res = await fetchWithTimeout(`/api/analyze?path=${encodeURIComponent(p)}&quick=true`, {method:'POST'}, 30000);
+    const data = await res.json();
+    renderAnalyze(data);
+  } catch (e) {
+    document.getElementById('content').innerHTML = `<div class="empty-state">分析失败<br><span style="color:#e94560;font-size:12px">${e.message}</span></div>`;
+  }
 }
 
 function renderAnalyze(d) {
-  let html = '<div class="result-card"><h3>📊 分析报告</h3>';
+  if (d.error) { document.getElementById('content').innerHTML = `<div class="empty-state">⚠ ${d.error}</div>`; return; }
+  let html = '<div class="result-card"><h3>📊 分析报告 ' + (d.quick ? '<span style="color:#888;font-size:12px">（快速模式）</span>' : '') + '</h3>';
   html += '<div class="stat-row">';
-  html += stat('文件总数', d.total_files);
-  html += stat('目录总数', d.total_dirs);
-  html += stat('总大小', d.total_size_human);
-  html += stat('跨度', (d.date_range?.oldest||'') + ' ~ ' + (d.date_range?.newest||''));
+  html += stat('文件总数', d.total_files?.toLocaleString() || '0');
+  html += stat('目录总数', (d.total_dirs || 0).toLocaleString());
+  html += stat('总大小', d.total_size_human || '0 B');
+  if (d.date_range) html += stat('时间跨度', (d.date_range.oldest||'') + ' ~ ' + (d.date_range.newest||''));
   html += '</div>';
   if (d.issues && d.issues.length > 0) {
-    html += '<div class="issues">⚠️ ' + d.issues.join('<br>⚠️ ') + '</div>';
+    html += '<div class="issues">' + d.issues.map(i => '⚠ ' + esc(i)).join('<br>') + '</div>';
   }
   if (d.file_types) {
-    html += '<h4 style="margin-top:12px">文件类型</h4>';
-    for (const [ext, info] of Object.entries(d.file_types).slice(0, 10)) {
-      html += `<div class="item-row"><span>${ext}</span><span>${info.count} 个</span><span style="color:#888">${formatSize(info.size)}</span></div>`;
+    html += '<h4 style="margin-top:12px">文件类型 Top 10</h4>';
+    const types = typeof d.file_types === 'object' && !Array.isArray(d.file_types) ? Object.entries(d.file_types) : [];
+    for (const [ext, info] of types.slice(0, 10)) {
+      const count = typeof info === 'object' ? info.count : info;
+      html += `<div class="item-row"><span>${esc(ext)}</span><span>${count?.toLocaleString() || count} 个</span></div>`;
     }
+  }
+  if (d.quick) {
+    html += '<div class="flex-gap"><button onclick="runFullAnalyze()">🔬 完整分析</button></div>';
   }
   html += '</div>';
   document.getElementById('content').innerHTML = html;
+}
+
+async function runFullAnalyze() {
+  const p = getPath(); if (!p) return;
+  document.getElementById('content').innerHTML = '<div class="loading">完整分析中，请等待...</div>';
+  try {
+    const res = await fetchWithTimeout(`/api/analyze?path=${encodeURIComponent(p)}&quick=false`, {method:'POST'}, 120000);
+    const data = await res.json();
+    renderAnalyze(data);
+  } catch (e) {
+    document.getElementById('content').innerHTML = `<div class="empty-state">分析失败<br><span style="color:#e94560;font-size:12px">${e.message}</span></div>`;
+  }
 }
 
 async function runDupFind() {
