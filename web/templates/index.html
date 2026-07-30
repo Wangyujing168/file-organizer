@@ -230,16 +230,32 @@ async function runFullAnalyze() {
   }
 }
 
+async function apiCall(label, url) {
+  document.getElementById('content').innerHTML = `<div class="loading">${label}...</div>`;
+  try {
+    const res = await fetchWithTimeout(url, {method:'POST'}, 60000);
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`服务器错误 (${res.status}): ${text.substring(0, 100)}`);
+    }
+    return await res.json();
+  } catch (e) {
+    document.getElementById('content').innerHTML = `<div class="result-card"><h3>❌ 操作失败</h3><p style="color:#e94560">${esc(e.message)}</p></div>`;
+    throw e;
+  }
+}
+
 async function runDupFind() {
   const p = getPath(); if (!p) return;
-  const data = await (await fetch(`/api/dup/find?path=${encodeURIComponent(p)}`, {method:'POST'})).json();
+  const data = await apiCall('查找重复文件中', `/api/dup/find?path=${encodeURIComponent(p)}`);
+  if (!data) return;
   let html = '<div class="result-card"><h3>🔍 重复文件查找</h3>';
   html += '<div class="stat-row">';
   html += stat('重复组', data.groups || data.total_groups);
   html += stat('重复文件', data.total_files);
   html += stat('可释放', data.total_waste_human);
   html += '</div>';
-  if (data.groups > 0) {
+  if ((data.groups || data.total_groups) > 0) {
     html += '<div class="flex-gap">';
     html += '<button class="primary" onclick="runDupReview()">📋 审查详情</button>';
     html += '<button class="danger" onclick="runDupClean()">🗑️ 清理重复</button>';
@@ -251,7 +267,8 @@ async function runDupFind() {
 
 async function runDupReview() {
   const p = getPath(); if (!p) return;
-  const data = await (await fetch(`/api/dup/review?path=${encodeURIComponent(p)}&top=30`, {method:'POST'})).json();
+  const data = await apiCall('审查重复文件中', `/api/dup/review?path=${encodeURIComponent(p)}&top=30`);
+  if (!data) return;
   let html = '<div class="result-card"><h3>📋 重复文件审查</h3>';
   if (data.summary) {
     html += '<div class="stat-row">';
@@ -282,7 +299,8 @@ async function runDupReview() {
 async function runDupClean() {
   const p = getPath(); if (!p) return;
   if (!confirm('确定要删除重复文件吗？')) return;
-  const data = await (await fetch(`/api/dup/clean?path=${encodeURIComponent(p)}&dry_run=false`, {method:'POST'})).json();
+  const data = await apiCall('清理重复文件中', `/api/dup/clean?path=${encodeURIComponent(p)}&dry_run=false`);
+  if (!data) return;
   let html = '<div class="result-card"><h3>🗑️ 清理结果</h3>';
   html += '<div class="stat-row">';
   html += stat('已删除', data.deleted);
@@ -295,16 +313,17 @@ async function runDupClean() {
 
 async function runCleanScan() {
   const p = getPath(); if (!p) return;
-  const data = await (await fetch(`/api/clean/scan?path=${encodeURIComponent(p)}`, {method:'POST'})).json();
+  const data = await apiCall('扫描杂乱文件中', `/api/clean/scan?path=${encodeURIComponent(p)}`);
+  if (!data) return;
   let html = '<div class="result-card"><h3>🧹 杂乱扫描</h3>';
   html += '<div class="stat-row">';
-  html += stat('旧文件', data.old_files?.count + ' / ' + (data.old_files?.size||''));
-  html += stat('临时文件', data.temp_files?.count + ' / ' + (data.temp_files?.size||''));
-  html += stat('空目录', data.empty_dirs?.count);
-  html += stat('大文件', data.large_files?.count);
+  html += stat('旧文件', (data.old_files?.count||0) + ' / ' + (data.old_files?.size||'0'));
+  html += stat('临时文件', (data.temp_files?.count||0) + ' / ' + (data.temp_files?.size||'0'));
+  html += stat('空目录', data.empty_dirs?.count||0);
+  html += stat('大文件', data.large_files?.count||0);
   html += '</div>';
-  html += `<div style="color:#7ec8e3;margin-top:4px">💡 可清理约: ${data.total_clutter}</div>`;
-  if (data.temp_files?.count > 0) {
+  html += `<div style="color:#7ec8e3;margin-top:4px">💡 可清理约: ${data.total_clutter || '0'}</div>`;
+  if ((data.temp_files?.count || 0) > 0) {
     html += '<div class="flex-gap"><button class="danger" onclick="runCleanExecute(\'temp\')">🗑️ 清理临时文件</button>';
     html += '<button onclick="runCleanExecute(\'empty\')">🗑️ 清理空目录</button></div>';
   }
@@ -315,13 +334,15 @@ async function runCleanScan() {
 async function runCleanExecute(target) {
   const p = getPath(); if (!p) return;
   if (!confirm('确定清理吗？')) return;
-  const data = await (await fetch(`/api/clean/execute?path=${encodeURIComponent(p)}&target=${target}`, {method:'POST'})).json();
+  const data = await apiCall('清理中', `/api/clean/execute?path=${encodeURIComponent(p)}&target=${target}`);
+  if (!data) return;
   document.getElementById('content').innerHTML = `<div class="result-card"><h3>✅ 清理完成</h3><p>已处理 ${data.deleted} 项</p></div>`;
 }
 
 async function runSuggest() {
   const p = getPath(); if (!p) return;
-  const data = await (await fetch(`/api/suggest?path=${encodeURIComponent(p)}`, {method:'POST'})).json();
+  const data = await apiCall('生成建议中', `/api/suggest?path=${encodeURIComponent(p)}`);
+  if (!data) return;
   let html = '<div class="result-card"><h3>💡 组织方案: ' + esc(data.scene) + '</h3>';
   if (data.structure) {
     html += '<h4>📁 建议结构</h4>';
