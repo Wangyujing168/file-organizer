@@ -398,7 +398,8 @@ def main(host: str = "0.0.0.0", port: int = 8888, open_browser: bool = True):
     import webbrowser
 
     if open_browser:
-        threading.Timer(1.0, lambda: webbrowser.open(f"http://{host}:{port}")).start()
+        browser_url = f"http://127.0.0.1:{port}"
+        threading.Timer(1.0, lambda: webbrowser.open(browser_url)).start()
 
     import uvicorn
     uvicorn.run(app, host=host, port=port, log_level="info")
