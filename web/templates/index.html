@@ -110,8 +110,11 @@ async function browse(path) {
     renderBreadcrumb(data.path);
     renderDrives(data.drives);
     renderFileList(data.children);
+    if (data.error) {
+      document.getElementById('fileList').innerHTML += `<div class="empty-state" style="color:#e94560">⚠ ${data.error}</div>`;
+    }
   } catch (e) {
-    document.getElementById('fileList').innerHTML = '<div class="empty-state">加载失败</div>';
+    document.getElementById('fileList').innerHTML = `<div class="empty-state">加载失败<br><span style="color:#e94560;font-size:12px">${e.message}</span></div>`;
   }
 }
 

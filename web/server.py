@@ -2,6 +2,7 @@
 
 import json
 import os
+import traceback
 import sys
 from pathlib import Path
 from typing import Optional
@@ -46,18 +47,23 @@ async def index():
 @app.get("/api/browse")
 async def browse(path: str = Query(default="/")):
     """浏览目录，返回子目录和文件列表"""
-    p = Path(path).expanduser()
+    try:
+        p = Path(path).expanduser()
+    except Exception:
+        return JSONResponse({"error": f"无效路径: {path}", "children": [], "drives": []})
+
     result = {
-        "path": str(p.resolve()),
+        "path": str(p.resolve()) if p.exists() else path,
         "exists": p.exists(),
         "is_dir": p.is_dir() if p.exists() else False,
         "parent": str(p.parent.resolve()) if p != p.parent else None,
         "children": [],
         "drives": [],
+        "error": "",
     }
 
     # Windows 根目录：列出盘符
-    if sys.platform == "win32" and (path == "/" or path == ""):
+    if sys.platform == "win32" and (path in ("/", "", "\\")):
         import string
         for letter in string.ascii_uppercase:
             d = Path(f"{letter}:\\")
@@ -66,26 +72,30 @@ async def browse(path: str = Query(default="/")):
         return result
 
     if not p.exists():
+        result["error"] = f"路径不存在: {path}"
         return result
 
-    if p.is_dir():
-        try:
-            items = []
-            for item in sorted(p.iterdir()):
-                try:
-                    is_dir = item.is_dir()
-                    items.append({
-                        "name": item.name,
-                        "path": str(item.resolve()),
-                        "is_dir": is_dir,
-                        "size": "" if is_dir else _format_size(item.stat().st_size),
-                        "mtime": "",
-                    })
-                except (OSError, PermissionError):
-                    pass
-            result["children"] = items
-        except PermissionError:
-            pass
+    if not p.is_dir():
+        result["error"] = f"不是目录: {path}"
+        return result
+
+    try:
+        items = []
+        for item in sorted(p.iterdir()):
+            try:
+                is_dir = item.is_dir()
+                items.append({
+                    "name": item.name,
+                    "path": str(item.resolve()),
+                    "is_dir": is_dir,
+                    "size": "" if is_dir else _format_size(item.stat().st_size),
+                    "mtime": "",
+                })
+            except (OSError, PermissionError):
+                pass
+        result["children"] = items
+    except (PermissionError, OSError) as e:
+        result["error"] = f"无法访问: {e}"
 
     return result
 
