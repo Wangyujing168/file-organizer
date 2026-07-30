@@ -3,3 +3,6 @@ rich>=13.0.0
 xxhash>=3.0.0
 Pillow>=10.0.0
 python-dateutil>=2.8.0
+# Web 版本（可选）
+fastapi>=0.100.0
+uvicorn>=0.20.0

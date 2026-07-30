@@ -42,7 +42,7 @@ class TestDuplicateFinder:
         finder = DuplicateFinder(min_size=1)
         duplicates = finder.find(temp_dir, recursive=False)
 
-        result = finder.clean(duplicates, keep="oldest", dry_run=False)
+        result = finder.clean(duplicates, keep="oldest", dry_run=False, confirm=True)
         assert result["deleted"] > 0
 
     def test_clean_dry_run(self, sample_files):

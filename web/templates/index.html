@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文件整理工具</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, 'Microsoft YaHei', sans-serif; display: flex; height: 100vh; background: #1a1a2e; color: #e0e0e0; }
+a { color: #7ec8e3; text-decoration: none; }
+
+/* 侧边栏 */
+.sidebar { width: 300px; min-width: 250px; background: #16213e; border-right: 1px solid #0f3460; display: flex; flex-direction: column; overflow: hidden; }
+.sidebar-header { padding: 12px; border-bottom: 1px solid #0f3460; }
+.sidebar-header input { width: 100%; padding: 8px 10px; background: #1a1a2e; border: 1px solid #0f3460; border-radius: 4px; color: #e0e0e0; font-size: 13px; }
+.breadcrumb { padding: 8px 12px; font-size: 12px; color: #888; border-bottom: 1px solid #0f3460; word-break: break-all; }
+.breadcrumb span { cursor: pointer; color: #7ec8e3; }
+.breadcrumb span:hover { text-decoration: underline; }
+.file-list { flex: 1; overflow-y: auto; padding: 4px 0; }
+.file-item { display: flex; align-items: center; padding: 6px 12px; cursor: pointer; font-size: 13px; transition: background 0.15s; }
+.file-item:hover { background: #0f3460; }
+.file-item.active { background: #0f3460; border-left: 3px solid #7ec8e3; }
+.file-item .icon { width: 20px; margin-right: 8px; font-size: 14px; }
+.file-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-item .size { font-size: 11px; color: #888; margin-left: 8px; }
+.drives { padding: 4px 0; border-bottom: 1px solid #0f3460; }
+.drive-item { display: flex; align-items: center; padding: 8px 12px; cursor: pointer; font-size: 13px; }
+.drive-item:hover { background: #0f3460; }
+
+/* 主区域 */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.toolbar { padding: 10px 16px; background: #16213e; border-bottom: 1px solid #0f3460; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.toolbar button { padding: 6px 14px; border: 1px solid #0f3460; border-radius: 4px; background: #1a1a2e; color: #e0e0e0; cursor: pointer; font-size: 13px; transition: all 0.15s; }
+.toolbar button:hover { background: #0f3460; border-color: #7ec8e3; }
+.toolbar button.primary { background: #0f3460; border-color: #7ec8e3; color: #7ec8e3; }
+.toolbar button.danger { border-color: #e94560; color: #e94560; }
+.toolbar button.danger:hover { background: #e94560; color: #fff; }
+.current-path { font-size: 12px; color: #888; padding: 4px 16px; border-bottom: 1px solid #0f3460; word-break: break-all; }
+.content { flex: 1; overflow-y: auto; padding: 16px; }
+.result-card { background: #16213e; border: 1px solid #0f3460; border-radius: 6px; padding: 16px; margin-bottom: 12px; }
+.result-card h3 { margin-bottom: 8px; color: #7ec8e3; font-size: 15px; }
+.stat-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 8px; }
+.stat-item { background: #1a1a2e; padding: 10px 16px; border-radius: 4px; text-align: center; min-width: 100px; }
+.stat-item .num { font-size: 22px; font-weight: bold; color: #7ec8e3; }
+.stat-item .label { font-size: 11px; color: #888; margin-top: 2px; }
+
+/* 列表 */
+.item-row { display: flex; align-items: baseline; padding: 4px 0; border-bottom: 1px solid #1a1a2e; font-size: 13px; gap: 12px; }
+.item-row .tag { padding: 1px 6px; border-radius: 3px; font-size: 11px; }
+.tag-keep { background: #1a4d2e; color: #4ecca3; }
+.tag-delete { background: #4d1a2e; color: #e94560; }
+.tag-info { background: #1a2e4d; color: #7ec8e3; }
+.item-path { color: #888; font-size: 12px; word-break: break-all; }
+
+.empty-state { text-align: center; padding: 60px 20px; color: #555; }
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+.issues { color: #e94560; margin-bottom: 8px; }
+.loading { text-align: center; padding: 20px; color: #888; }
+.hint { font-size: 12px; color: #666; margin-top: 4px; }
+.flex-gap { display: flex; gap: 8px; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- 侧边栏 -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <input type="text" id="pathInput" placeholder="输入路径后回车..." onkeydown="if(event.key==='Enter') browse(document.getElementById('pathInput').value)">
+  </div>
+  <div class="breadcrumb" id="breadcrumb"></div>
+  <div class="drives" id="drives"></div>
+  <div class="file-list" id="fileList">
+    <div class="empty-state"><div class="icon">📂</div>输入路径开始浏览</div>
+  </div>
+</div>
+
+<!-- 主区域 -->
+<div class="main">
+  <div class="toolbar">
+    <button class="primary" onclick="runAnalyze()">📊 分析</button>
+    <button onclick="runDupFind()">🔍 找重复</button>
+    <button onclick="runDupReview()">📋 审查重复</button>
+    <button class="danger" onclick="runDupClean()">🗑️ 清理重复</button>
+    <button onclick="runCleanScan()">🧹 杂乱扫描</button>
+    <button onclick="runSuggest()">💡 建议结构</button>
+  </div>
+  <div class="current-path" id="currentPath">选择一个目录开始</div>
+  <div class="content" id="content">
+    <div class="empty-state">
+      <div class="icon">📂</div>
+      <p>在左侧选择目录，然后点击上方按钮操作</p>
+      <p class="hint">提示：点击工具栏按钮前，先在左侧选中目标目录</p>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentPath = '';
+
+// ======================== 浏览目录 ========================
+async function browse(path) {
+  if (!path) path = currentPath || '/';
+  showLoading('fileList');
+  try {
+    const res = await fetch(`/api/browse?path=${encodeURIComponent(path)}`);
+    const data = await res.json();
+    currentPath = data.path;
+    document.getElementById('pathInput').value = data.path;
+    document.getElementById('currentPath').textContent = '📍 ' + data.path;
+    renderBreadcrumb(data.path);
+    renderDrives(data.drives);
+    renderFileList(data.children);
+  } catch (e) {
+    document.getElementById('fileList').innerHTML = '<div class="empty-state">加载失败</div>';
+  }
+}
+
+function renderBreadcrumb(path) {
+  const parts = path.split(/[\\/]/).filter(Boolean);
+  let html = '', accum = '';
+  for (let i = 0; i < parts.length; i++) {
+    accum += (i === 0 && path.match(/^[A-Z]:/i) ? parts[i] + '\\' : '\\' + parts[i]);
+    html += i > 0 ? ' / ' : '';
+    html += `<span onclick="browse('${accum.replace(/\\/g, '\\\\')}')">${parts[i]}</span>`;
+  }
+  document.getElementById('breadcrumb').innerHTML = html || path;
+}
+
+function renderDrives(drives) {
+  if (!drives || drives.length === 0) { document.getElementById('drives').innerHTML = ''; return; }
+  let html = '';
+  drives.forEach(d => { html += `<div class="drive-item" onclick="browse('${d.path}')">💾 ${d.name}</div>`; });
+  document.getElementById('drives').innerHTML = html;
+}
+
+function renderFileList(children) {
+  if (!children || children.length === 0) {
+    document.getElementById('fileList').innerHTML = '<div class="empty-state">空目录</div>';
+    return;
+  }
+  const dirs = children.filter(c => c.is_dir);
+  const files = children.filter(c => !c.is_dir);
+  let html = '';
+  dirs.forEach(d => {
+    html += `<div class="file-item" onclick="browse('${d.path.replace(/'/g, "\\'")}')">
+      <span class="icon">📁</span><span class="name">${esc(d.name)}</span>
+    </div>`;
+  });
+  files.forEach(f => {
+    html += `<div class="file-item">
+      <span class="icon">📄</span><span class="name">${esc(f.name)}</span>
+      <span class="size">${f.size}</span>
+    </div>`;
+  });
+  document.getElementById('fileList').innerHTML = html;
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function showLoading(id) { document.getElementById(id).innerHTML = '<div class="loading">加载中...</div>'; }
+
+// ======================== 操作 ========================
+function getPath() { return currentPath; }
+
+async function apiPost(url, body) {
+  showLoading('content');
+  try {
+    const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+    return await res.json();
+  } catch (e) { return {error: '请求失败: ' + e.message}; }
+}
+
+async function runAnalyze() {
+  const p = getPath(); if (!p) return;
+  const data = await (await fetch(`/api/analyze?path=${encodeURIComponent(p)}`, {method:'POST'})).json();
+  renderAnalyze(data);
+}
+
+function renderAnalyze(d) {
+  let html = '<div class="result-card"><h3>📊 分析报告</h3>';
+  html += '<div class="stat-row">';
+  html += stat('文件总数', d.total_files);
+  html += stat('目录总数', d.total_dirs);
+  html += stat('总大小', d.total_size_human);
+  html += stat('跨度', (d.date_range?.oldest||'') + ' ~ ' + (d.date_range?.newest||''));
+  html += '</div>';
+  if (d.issues && d.issues.length > 0) {
+    html += '<div class="issues">⚠️ ' + d.issues.join('<br>⚠️ ') + '</div>';
+  }
+  if (d.file_types) {
+    html += '<h4 style="margin-top:12px">文件类型</h4>';
+    for (const [ext, info] of Object.entries(d.file_types).slice(0, 10)) {
+      html += `<div class="item-row"><span>${ext}</span><span>${info.count} 个</span><span style="color:#888">${formatSize(info.size)}</span></div>`;
+    }
+  }
+  html += '</div>';
+  document.getElementById('content').innerHTML = html;
+}
+
+async function runDupFind() {
+  const p = getPath(); if (!p) return;
+  const data = await (await fetch(`/api/dup/find?path=${encodeURIComponent(p)}`, {method:'POST'})).json();
+  let html = '<div class="result-card"><h3>🔍 重复文件查找</h3>';
+  html += '<div class="stat-row">';
+  html += stat('重复组', data.groups || data.total_groups);
+  html += stat('重复文件', data.total_files);
+  html += stat('可释放', data.total_waste_human);
+  html += '</div>';
+  if (data.groups > 0) {
+    html += '<div class="flex-gap">';
+    html += '<button class="primary" onclick="runDupReview()">📋 审查详情</button>';
+    html += '<button class="danger" onclick="runDupClean()">🗑️ 清理重复</button>';
+    html += '</div>';
+  }
+  html += '</div>';
+  document.getElementById('content').innerHTML = html;
+}
+
+async function runDupReview() {
+  const p = getPath(); if (!p) return;
+  const data = await (await fetch(`/api/dup/review?path=${encodeURIComponent(p)}&top=30`, {method:'POST'})).json();
+  let html = '<div class="result-card"><h3>📋 重复文件审查</h3>';
+  if (data.summary) {
+    html += '<div class="stat-row">';
+    html += stat('🟢 保留', data.summary.keep);
+    html += stat('🔴 删除', data.summary.delete);
+    html += stat('💾 释放', data.summary.waste);
+    html += '</div>';
+  }
+  if (data.groups) {
+    data.groups.forEach(g => {
+      html += `<div style="margin-top:8px;padding:8px;background:#1a1a2e;border-radius:4px">`;
+      html += `<strong>组 #${g.index}</strong> ${g.file_size_human} × ${g.total_copies} 份 — 浪费 ${g.waste}<br>`;
+      html += `<span class="tag tag-keep">保留</span> <strong>${esc(g.keep_file.name)}</strong> <span style="color:#888;font-size:12px">${g.keep_file.mtime}</span>`;
+      html += `<div class="item-path">${esc(g.keep_file.path)}</div>`;
+      g.delete_files.forEach(f => {
+        html += `<span class="tag tag-delete">删除</span> ${esc(f.name)} <span style="color:#888;font-size:12px">${f.mtime}</span>`;
+        html += `<div class="item-path">${esc(f.path)}</div>`;
+      });
+      html += `<div style="color:#4ecca3;font-size:12px;margin-top:4px">💡 ${g.recommendation}</div>`;
+      html += `</div>`;
+    });
+  }
+  html += '<div class="flex-gap"><button class="danger" onclick="runDupClean()">🗑️ 确认清理</button></div>';
+  html += '</div>';
+  document.getElementById('content').innerHTML = html;
+}
+
+async function runDupClean() {
+  const p = getPath(); if (!p) return;
+  if (!confirm('确定要删除重复文件吗？')) return;
+  const data = await (await fetch(`/api/dup/clean?path=${encodeURIComponent(p)}&dry_run=false`, {method:'POST'})).json();
+  let html = '<div class="result-card"><h3>🗑️ 清理结果</h3>';
+  html += '<div class="stat-row">';
+  html += stat('已删除', data.deleted);
+  html += stat('释放空间', data.freed);
+  html += '</div>';
+  if (data.errors > 0) html += `<div class="issues">${data.errors} 个文件删除失败</div>`;
+  html += '</div>';
+  document.getElementById('content').innerHTML = html;
+}
+
+async function runCleanScan() {
+  const p = getPath(); if (!p) return;
+  const data = await (await fetch(`/api/clean/scan?path=${encodeURIComponent(p)}`, {method:'POST'})).json();
+  let html = '<div class="result-card"><h3>🧹 杂乱扫描</h3>';
+  html += '<div class="stat-row">';
+  html += stat('旧文件', data.old_files?.count + ' / ' + (data.old_files?.size||''));
+  html += stat('临时文件', data.temp_files?.count + ' / ' + (data.temp_files?.size||''));
+  html += stat('空目录', data.empty_dirs?.count);
+  html += stat('大文件', data.large_files?.count);
+  html += '</div>';
+  html += `<div style="color:#7ec8e3;margin-top:4px">💡 可清理约: ${data.total_clutter}</div>`;
+  if (data.temp_files?.count > 0) {
+    html += '<div class="flex-gap"><button class="danger" onclick="runCleanExecute(\'temp\')">🗑️ 清理临时文件</button>';
+    html += '<button onclick="runCleanExecute(\'empty\')">🗑️ 清理空目录</button></div>';
+  }
+  html += '</div>';
+  document.getElementById('content').innerHTML = html;
+}
+
+async function runCleanExecute(target) {
+  const p = getPath(); if (!p) return;
+  if (!confirm('确定清理吗？')) return;
+  const data = await (await fetch(`/api/clean/execute?path=${encodeURIComponent(p)}&target=${target}`, {method:'POST'})).json();
+  document.getElementById('content').innerHTML = `<div class="result-card"><h3>✅ 清理完成</h3><p>已处理 ${data.deleted} 项</p></div>`;
+}
+
+async function runSuggest() {
+  const p = getPath(); if (!p) return;
+  const data = await (await fetch(`/api/suggest?path=${encodeURIComponent(p)}`, {method:'POST'})).json();
+  let html = '<div class="result-card"><h3>💡 组织方案: ' + esc(data.scene) + '</h3>';
+  if (data.structure) {
+    html += '<h4>📁 建议结构</h4>';
+    data.structure.forEach(f => { html += `<div>├── ${esc(f)}</div>`; });
+  }
+  if (data.tips) {
+    html += '<h4 style="margin-top:8px">💡 建议</h4>';
+    data.tips.forEach(t => { html += `<div style="color:#888;font-size:13px">• ${esc(t)}</div>`; });
+  }
+  html += '</div>';
+  document.getElementById('content').innerHTML = html;
+}
+
+// ======================== 辅助 ========================
+function stat(label, value) {
+  return `<div class="stat-item"><div class="num">${value}</div><div class="label">${label}</div></div>`;
+}
+
+function formatSize(bytes) {
+  if (!bytes || bytes === '0 B') return '0 B';
+  if (typeof bytes === 'string') return bytes;
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  if (bytes < 1073741824) return (bytes/1048576).toFixed(1) + ' MB';
+  return (bytes/1073741824).toFixed(2) + ' GB';
+}
+
+// 初始加载
+browse('/');
+</script>
+</body>
+</html>

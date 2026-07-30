@@ -63,6 +63,21 @@ app.add_typer(undo_app, name="undo")
 
 
 # ============================================================
+# web 命令
+# ============================================================
+@app.command(name="web")
+def web_start(
+    host: str = typer.Option("127.0.0.1", "--host", "-h", help="监听地址"),
+    port: int = typer.Option(8888, "--port", "-p", help="监听端口"),
+    no_browser: bool = typer.Option(False, "--no-browser", help="不自动打开浏览器"),
+):
+    """启动 Web 界面（浏览器中操作）"""
+    from web.server import main
+    console.print(f"🚀 启动 Web 服务: [cyan]http://{host}:{port}[/cyan]")
+    main(host=host, port=port, open_browser=not no_browser)
+
+
+# ============================================================
 # date 子命令
 # ============================================================
 @date_app.command(name="sort")
